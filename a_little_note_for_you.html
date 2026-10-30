@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A Little Note For You</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=Dancing+Script:wght@500;600;700&display=swap');
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    min-height: 100%;
+    font-family: 'Dancing Script', cursive;
+    background: radial-gradient(circle at 20% 20%, #fdf3f8 0%, #f3ebf7 40%, #eef0fa 100%);
+    overflow-x: hidden;
+    color: #4b3d55;
+  }
+
+  /* ---------- icon system (inline SVG, no external font) ---------- */
+  .icon-svg { display: inline-block; vertical-align: middle; flex-shrink: 0; }
+  .icon-16 { width: 16px; height: 16px; }
+  .icon-18 { width: 18px; height: 18px; }
+  .icon-19 { width: 19px; height: 19px; }
+  .icon-26 { width: 26px; height: 26px; }
+  .icon-32 { width: 32px; height: 32px; }
+  .icon-46 { width: 46px; height: 46px; }
+  .icon-50 { width: 50px; height: 50px; }
+  .icon-70 { width: 70px; height: 70px; }
+
+  @keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    25% { transform: scale(1.12); }
+    40% { transform: scale(0.97); }
+    60% { transform: scale(1.08); }
+  }
+  .anim-heartbeat { animation: heartbeat 1.7s ease-in-out infinite; transform-origin: center; }
+
+  @keyframes flowerSway {
+    0%, 100% { transform: rotate(-7deg); }
+    50% { transform: rotate(7deg); }
+  }
+  .anim-sway { animation: flowerSway 3s ease-in-out infinite; transform-origin: center; }
+
+  @keyframes starTwinkle {
+    0%, 100% { opacity: 1; transform: scale(1) rotate(0deg); }
+    50% { opacity: 0.55; transform: scale(0.85) rotate(10deg); }
+  }
+  .anim-twinkle { animation: starTwinkle 1.9s ease-in-out infinite; transform-origin: center; }
+
+  /* ---------- tap hint rings (guide animation, no text) ---------- */
+  .tap-pulse, .tap-pulse-rect { position: relative; }
+  .tap-pulse::before, .tap-pulse-rect::before {
+    content: "";
+    position: absolute;
+    inset: -12px;
+    border: 2px solid #e59bc0;
+    opacity: 0.55;
+    pointer-events: none;
+    animation: pulseRing 1.9s ease-out infinite;
+  }
+  .tap-pulse::before { border-radius: 50%; }
+  .tap-pulse-rect::before { border-radius: 22px; }
+  @keyframes pulseRing {
+    0% { transform: scale(0.88); opacity: 0.55; }
+    70% { transform: scale(1.18); opacity: 0; }
+    100% { transform: scale(1.18); opacity: 0; }
+  }
+
+  /* ---------- falling petals background ---------- */
+  #petal-container { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
+  .petal {
+    position: absolute;
+    top: -30px;
+    border-radius: 60% 0 60% 0;
+    opacity: 0.85;
+    animation: fall linear infinite;
+  }
+  @keyframes fall {
+    0% { transform: translateY(0) translateX(0) rotate(0deg); }
+    50% { transform: translateY(50vh) translateX(30px) rotate(180deg); }
+    100% { transform: translateY(105vh) translateX(-20px) rotate(360deg); }
+  }
+
+  .stage {
+    position: relative;
+    z-index: 3;
+    min-height: 100vh;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 30px 20px;
+  }
+  .stage.active { display: flex; }
+
+  .step-label {
+    font-size: 19px;
+    color: #b993c4;
+    margin-bottom: 6px;
+    letter-spacing: 1px;
+  }
+
+  .progress-track { display: flex; gap: 7px; margin-bottom: 28px; }
+  .progress-dot { width: 8px; height: 8px; border-radius: 50%; background: #eaddf0; transition: background 0.3s, transform 0.3s; }
+  .progress-dot.done { background: #d98fb0; animation: dotGrow 0.4s ease; }
+  @keyframes dotGrow { 0% { transform: scale(1);} 50% { transform: scale(1.6);} 100% { transform: scale(1);} }
+
+  /* ---------- Stage 1: opening scene ---------- */
+  .frame {
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff, #f4dff0 70%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 20px 45px rgba(180, 130, 190, 0.35), inset 0 0 0 6px #ffffffaa;
+    margin-bottom: 30px;
+    cursor: pointer;
+    animation: floaty 4s ease-in-out infinite;
+    transition: transform 0.3s ease;
+  }
+  .frame:hover { transform: scale(1.05); }
+  @keyframes floaty {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  .frame .icon-svg { color: #d98fb0; }
+  .ring {
+    position: absolute;
+    inset: -14px;
+    border-radius: 50%;
+    border: 1.5px dashed #e3b8d1;
+    animation: spin 18s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  h1.title {
+    font-family: 'Great Vibes', cursive;
+    font-size: 50px;
+    color: #a45c8a;
+    margin: 0 0 8px 0;
+  }
+  .subtitle {
+    font-family: 'Dancing Script', cursive;
+    font-size: 21px;
+    color: #8a6b95;
+    margin-bottom: 28px;
+    max-width: 300px;
+  }
+
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #e59bc0, #c98fd8);
+    color: white;
+    border: none;
+    padding: 14px 30px;
+    font-family: 'Dancing Script', cursive;
+    font-weight: 600;
+    font-size: 20px;
+    border-radius: 40px;
+    cursor: pointer;
+    box-shadow: 0 10px 22px rgba(200, 140, 190, 0.45);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .cta:hover { transform: translateY(-3px); box-shadow: 0 14px 26px rgba(200,140,190,0.55); }
+  .cta .icon-svg { color: #fff; }
+
+  /* ---------- Stage 2: ribbon untie ---------- */
+  .ribbon-wrap { width: 220px; height: 160px; position: relative; margin-bottom: 26px; cursor: pointer; }
+  .ribbon-box {
+    width: 100%; height: 100%;
+    background: linear-gradient(145deg, #fff, #f6e6f3);
+    border-radius: 14px;
+    box-shadow: 0 16px 32px rgba(180,130,190,0.3);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ribbon-box .icon-svg { color: #c98fd8; }
+  .ribbon-v {
+    position: absolute; top: 0; left: 50%; width: 22px; height: 100%;
+    background: #e59bc0; transform: translateX(-50%);
+    transition: transform 0.5s ease, opacity 0.5s ease;
+  }
+  .ribbon-h {
+    position: absolute; top: 50%; left: 0; width: 100%; height: 22px;
+    background: #e59bc0; transform: translateY(-50%);
+    transition: transform 0.5s ease, opacity 0.5s ease;
+  }
+  .ribbon-v.untied { transform: translateX(-50%) translateY(-160px) rotate(-25deg); opacity: 0; }
+  .ribbon-h.untied { transform: translateY(-50%) translateX(220px) rotate(15deg); opacity: 0; }
+
+  /* ---------- Stage 3: scatter petals off the cover ---------- */
+  .cover-wrap { width: 230px; height: 170px; position: relative; margin-bottom: 20px; }
+  .cover-base {
+    width: 100%; height: 100%;
+    background: linear-gradient(145deg, #fff, #fbeaf5);
+    border-radius: 14px;
+    box-shadow: 0 16px 32px rgba(180,130,190,0.3);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Dancing Script', cursive;
+    color: #c98fd8;
+    font-size: 22px;
+  }
+  .cover-petal {
+    position: absolute;
+    line-height: 0;
+    cursor: pointer;
+    user-select: none;
+    transition: transform 0.4s ease, opacity 0.4s ease;
+    color: #e59bc0;
+  }
+  .cover-petal.gone { transform: scale(0) rotate(180deg) translateY(-40px); opacity: 0; pointer-events: none; }
+  .tap-note { font-size: 18px; color: #9c7ea8; margin-top: 10px; }
+
+  /* ---------- Stage 4: sparkle sequence ---------- */
+  .sequence-row { display: flex; gap: 16px; margin-bottom: 18px; }
+  .seq-icon {
+    width: 62px; height: 62px;
+    border-radius: 50%;
+    background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 20px rgba(180,130,190,0.25);
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.3s ease;
+  }
+  .seq-icon .icon-svg { color: #c98fd8; }
+  .seq-icon.lit { background: linear-gradient(135deg, #e59bc0, #c98fd8); }
+  .seq-icon.lit .icon-svg { color: #fff; }
+  .seq-icon.wrong { animation: shake 0.3s ease; }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+  }
+
+  /* ---------- Stage 5: hold to seal ---------- */
+  .seal-btn {
+    width: 130px; height: 130px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #e59bc0, #c98fd8);
+    border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 12px 26px rgba(200,140,190,0.5);
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+    animation: pulse 1.7s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { transform: scale(1);} 50% { transform: scale(1.05);} }
+  .seal-btn .icon-svg { color: #fff; position: relative; z-index: 2; }
+  .seal-fill { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: rgba(255,255,255,0.3); transition: height 0.05s linear; }
+
+  /* ---------- Stage 6: name ---------- */
+  .name-card {
+    background: #fffdfc;
+    border-radius: 18px;
+    padding: 34px 30px;
+    box-shadow: 0 16px 36px rgba(180,130,190,0.25);
+    max-width: 340px;
+    width: 100%;
+  }
+  .name-card .icon-svg { color: #d98fb0; margin-bottom: 6px; }
+  .name-input {
+    width: 100%;
+    border: none;
+    border-bottom: 2px solid #e9cfe3;
+    padding: 10px 4px;
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    text-align: center;
+    color: #6b4d70;
+    background: transparent;
+    margin: 14px 0 20px 0;
+    outline: none;
+    transition: border-color 0.3s;
+  }
+  .name-input:focus { border-color: #d98fb0; }
+
+  /* ---------- Envelope unwrapping ---------- */
+  .env-scene { position: relative; width: 280px; height: 190px; margin: 90px 0 40px; perspective: 900px; transition: transform 0.9s ease, opacity 0.9s ease; }
+  .env-scene.leave { transform: translateY(70px) scale(0.92); opacity: 0; }
+  .env-back { position: absolute; inset: 0; background: #eec0d8; border-radius: 6px; box-shadow: 0 22px 44px rgba(180,130,190,0.42); z-index: 1; }
+  .env-paper {
+    position: absolute; left: 16px; right: 16px; top: 10px; height: 170px;
+    background: linear-gradient(#fffdfc, #fff1f7); border-radius: 4px; z-index: 2;
+    display: flex; flex-direction: column; align-items: center; padding-top: 18px;
+    font-family: 'Great Vibes', cursive; font-size: 30px; color: #a45c8a;
+    box-shadow: 0 -2px 12px rgba(180,130,190,0.25);
+    transition: transform 1.4s cubic-bezier(.3,.9,.3,1);
+  }
+  .env-paper i { display: block; width: 62%; height: 2px; background: #f0d6e4; margin-top: 12px; border-radius: 2px; }
+  .env-paper.rise { transform: translateY(-125px); }
+  .env-front { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; }
+  .env-flap {
+    position: absolute; left: 0; top: 0; width: 100%; height: 100px; z-index: 4;
+    background: linear-gradient(#f1c6dc, #e8b4d0); clip-path: polygon(0 0, 100% 0, 50% 100%);
+    transform-origin: top center; transition: transform 1s ease, background 0.6s ease;
+  }
+  .env-flap.open { transform: rotateX(180deg); background: linear-gradient(#e8b4d0, #f6d9e8); }
+  .env-seal {
+    position: absolute; left: 50%; top: 72px; width: 56px; height: 56px; margin-left: -28px; z-index: 5;
+    border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 35% 30%, #ff9db8, #c9456f 75%);
+    box-shadow: 0 6px 14px rgba(160,50,90,0.45), inset 0 -4px 8px rgba(0,0,0,0.18);
+  }
+  .env-seal .icon-svg { color: #ffe3ee; }
+  .env-seal.broken { animation: sealBreak 0.5s ease forwards; pointer-events: none; }
+  @keyframes sealBreak {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.25) rotate(-8deg); }
+    100% { transform: scale(0) rotate(30deg); opacity: 0; }
+  }
+  .env-sparkle { position: absolute; z-index: 6; color: #e59bc0; pointer-events: none; }
+
+  /* ---------- Letter stage ---------- */
+  #letter-stage { padding: 60px 16px 90px; align-items: flex-start; }
+  .letter-card {
+    max-width: 640px;
+    width: 100%;
+    margin: 0 auto;
+    background: #fffdfc;
+    border-radius: 20px;
+    padding: 48px 42px;
+    box-shadow: 0 20px 50px rgba(180,130,190,0.28);
+    position: relative;
+    text-align: left;
+    opacity: 0;
+    transform-origin: top center;
+    animation: unfold 1.7s cubic-bezier(.2,.8,.2,1) forwards;
+  }
+  @keyframes unfold {
+    0% { opacity: 0; transform: perspective(1400px) rotateX(-85deg) scaleY(0.25); }
+    35% { opacity: 1; }
+    70% { transform: perspective(1400px) rotateX(7deg) scaleY(1.02); }
+    100% { opacity: 1; transform: perspective(1400px) rotateX(0) scaleY(1); }
+  }
+
+  .letter-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 40px; right: 40px;
+    height: 4px;
+    background: linear-gradient(90deg, transparent, #e59bc0, transparent);
+    border-radius: 2px;
+  }
+
+  .letter-top { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+  .letter-top .icon-svg { color: #d98fb0; }
+  .letter-date { font-size: 20px; letter-spacing: 1px; color: #b993c4; }
+
+  h2.greeting {
+    font-family: 'Great Vibes', cursive;
+    font-size: 58px;
+    color: #a45c8a;
+    margin: 0 0 24px 0;
+  }
+
+  .letter-card p {
+    font-family: 'Dancing Script', cursive;
+    font-weight: 500;
+    font-size: 23px;
+    line-height: 1.7;
+    color: #4b3d55;
+    margin-bottom: 20px;
+    opacity: 0;
+    clip-path: inset(0 0 100% 0);
+    transition: clip-path 1.5s ease, opacity 0.5s ease;
+  }
+  .letter-card p.reveal { opacity: 1; clip-path: inset(-8px -8px -8px -8px); }
+  .letter-card p.ps { color: #a45c8a; }
+
+  .ornament { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 28px 0; color: #e3b8d1; }
+  .ornament .line { width: 50px; height: 1px; background: #e3b8d1; }
+  .ornament .icon-svg { color: #e3b8d1; }
+
+  .closing { margin-top: 26px; text-align: right; }
+  .closing .icon-svg { color: #d98fb0; }
+  .closing .script { font-family: 'Great Vibes', cursive; font-size: 34px; color: #a45c8a; display: block; margin-top: 4px; }
+
+  .restart-wrap { text-align: center; margin: 28px auto 0; max-width: 640px; }
+  .restart-btn {
+    background: transparent; border: 1.5px solid #e3b8d1; color: #a45c8a;
+    padding: 9px 22px; border-radius: 22px; font-family: 'Dancing Script', cursive;
+    font-size: 18px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  }
+</style>
+</head>
+<body>
+
+  <!-- inline icon library, no external font, renders everywhere reliably -->
+  <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="display:none">
+    <symbol id="icon-heart" viewBox="0 0 24 24">
+      <path d="M12 19.2c-.3 0-.6-.1-.8-.3-1.6-1.4-3.1-2.7-4.4-3.9C4.1 12.5 2.5 10.4 2.5 8c0-2.5 2-4.5 4.5-4.5 1.5 0 2.9.8 3.7 2 .2.3.7.3.9 0 .8-1.2 2.2-2 3.7-2 2.5 0 4.5 2 4.5 4.5 0 2.4-1.6 4.5-4.3 6.9-1.3 1.2-2.8 2.5-4.4 3.9-.2.2-.5.3-.8.3z" fill="currentColor"/>
+      <ellipse cx="9" cy="7.6" rx="1.5" ry="0.9" fill="#ffffff" opacity="0.55" transform="rotate(-25 9 7.6)"/>
+    </symbol>
+    <symbol id="icon-flower" viewBox="0 0 24 24">
+      <g fill="currentColor">
+        <ellipse cx="12" cy="6.5" rx="3" ry="4"/>
+        <ellipse cx="12" cy="6.5" rx="3" ry="4" transform="rotate(72 12 12)"/>
+        <ellipse cx="12" cy="6.5" rx="3" ry="4" transform="rotate(144 12 12)"/>
+        <ellipse cx="12" cy="6.5" rx="3" ry="4" transform="rotate(216 12 12)"/>
+        <ellipse cx="12" cy="6.5" rx="3" ry="4" transform="rotate(288 12 12)"/>
+      </g>
+      <circle cx="12" cy="12" r="2.1" fill="#fff5d9"/>
+    </symbol>
+    <symbol id="icon-star" viewBox="0 0 24 24">
+      <path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.1 6.6L12 17.8l-5.8 3.1 1.1-6.6L2.5 9.4l6.6-.9z" fill="currentColor"/>
+    </symbol>
+    <symbol id="icon-box" viewBox="0 0 24 24">
+      <rect x="3" y="8" width="18" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <path d="M3 8l9-4 9 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <line x1="12" y1="8" x2="12" y2="20" stroke="currentColor" stroke-width="1.6"/>
+    </symbol>
+    <symbol id="icon-unlock" viewBox="0 0 24 24">
+      <rect x="5" y="11" width="14" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/>
+      <path d="M8 11V8a4 4 0 0 1 7.5-2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+      <circle cx="12" cy="15.3" r="1.3" fill="currentColor"/>
+    </symbol>
+    <symbol id="icon-pencil" viewBox="0 0 24 24">
+      <path d="M4 20l1-4.2L15.8 5 19 8.2 8.2 19 4 20z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+      <line x1="14" y1="6.8" x2="17.2" y2="10" stroke="currentColor" stroke-width="1.6"/>
+    </symbol>
+    <symbol id="icon-envelope" viewBox="0 0 24 24">
+      <rect x="3" y="5" width="18" height="14" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <path d="M4 6.5l8 6.2 8-6.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-sparkle" viewBox="0 0 24 24">
+      <path d="M12 3l1.8 5.6L19.5 10l-5.7 1.7L12 17l-1.8-5.3L4.5 10l5.7-1.4L12 3z" fill="currentColor"/>
+    </symbol>
+  </svg>
+
+  <div id="petal-container"></div>
+
+  <div class="stage active" id="stage-1">
+    <p class="step-label">step one of five</p>
+    <div class="progress-track">
+      <div class="progress-dot" data-d="1"></div><div class="progress-dot" data-d="2"></div>
+      <div class="progress-dot" data-d="3"></div><div class="progress-dot" data-d="4"></div>
+      <div class="progress-dot" data-d="5"></div>
+    </div>
+    <div class="frame tap-pulse" id="frameBtn">
+      <div class="ring"></div>
+      <svg class="icon-svg icon-70 anim-heartbeat"><use xlink:href="#icon-heart" href="#icon-heart"/></svg>
+    </div>
+    <h1 class="title">A little note, for you</h1>
+    <p class="subtitle">before anything else, I just want you to know something. it took a few steps to put this together, so take your time opening it too.</p>
+    <button class="cta" id="startBtn">
+      <svg class="icon-svg icon-19"><use xlink:href="#icon-flower" href="#icon-flower"/></svg>
+      begin
+    </button>
+  </div>
+
+  <div class="stage" id="stage-2">
+    <p class="step-label">step two of five</p>
+    <div class="progress-track">
+      <div class="progress-dot done" data-d="1"></div><div class="progress-dot" data-d="2"></div>
+      <div class="progress-dot" data-d="3"></div><div class="progress-dot" data-d="4"></div>
+      <div class="progress-dot" data-d="5"></div>
+    </div>
+    <h1 class="title" style="font-size:40px;">untie the ribbon</h1>
+    <div class="ribbon-wrap tap-pulse-rect" id="ribbonBtn">
+      <div class="ribbon-box"><svg class="icon-svg icon-50"><use xlink:href="#icon-box" href="#icon-box"/></svg></div>
+      <div class="ribbon-v" id="ribbonV"></div>
+      <div class="ribbon-h" id="ribbonH"></div>
+    </div>
+    <p class="subtitle">tap the box to pull the ribbon loose</p>
+  </div>
+
+  <div class="stage" id="stage-3">
+    <p class="step-label">step three of five</p>
+    <div class="progress-track">
+      <div class="progress-dot done" data-d="1"></div><div class="progress-dot done" data-d="2"></div>
+      <div class="progress-dot" data-d="3"></div><div class="progress-dot" data-d="4"></div>
+      <div class="progress-dot" data-d="5"></div>
+    </div>
+    <h1 class="title" style="font-size:40px;">clear the petals</h1>
+    <div class="cover-wrap tap-pulse-rect" id="coverWrap">
+      <div class="cover-base">still sealed</div>
+      <span class="cover-petal" style="top:-10px; left:20px;"><svg class="icon-svg icon-26"><use xlink:href="#icon-flower" href="#icon-flower"/></svg></span>
+      <span class="cover-petal" style="top:30px; right:-10px;"><svg class="icon-svg icon-26"><use xlink:href="#icon-flower" href="#icon-flower"/></svg></span>
+      <span class="cover-petal" style="bottom:-8px; left:60px;"><svg class="icon-svg icon-26"><use xlink:href="#icon-flower" href="#icon-flower"/></svg></span>
+      <span class="cover-petal" style="top:60px; left:-8px;"><svg class="icon-svg icon-26"><use xlink:href="#icon-flower" href="#icon-flower"/></svg></span>
+      <span class="cover-petal" style="bottom:10px; right:30px;"><svg class="icon-svg icon-26"><use xlink:href="#icon-flower" href="#icon-flower"/></svg></span>
+    </div>
+    <p class="tap-note" id="petalCounter">tap all 5 petals scattered on the cover</p>
+  </div>
+
+  <div class="stage" id="stage-4">
+    <p class="step-label">step four of five</p>
+    <div class="progress-track">
+      <div class="progress-dot done" data-d="1"></div><div class="progress-dot done" data-d="2"></div>
+      <div class="progress-dot done" data-d="3"></div><div class="progress-dot" data-d="4"></div>
+      <div class="progress-dot" data-d="5"></div>
+    </div>
+    <h1 class="title" style="font-size:40px;">light them in order</h1>
+    <p class="subtitle" style="margin-bottom:20px;">tap the flower, then the star, then the heart</p>
+    <div class="sequence-row">
+      <div class="seq-icon tap-pulse" id="seqFlower" data-key="flower">
+        <svg class="icon-svg icon-26 anim-sway"><use xlink:href="#icon-flower" href="#icon-flower"/></svg>
+      </div>
+      <div class="seq-icon" id="seqStar" data-key="star">
+        <svg class="icon-svg icon-26 anim-twinkle"><use xlink:href="#icon-star" href="#icon-star"/></svg>
+      </div>
+      <div class="seq-icon" id="seqHeart" data-key="heart">
+        <svg class="icon-svg icon-26 anim-heartbeat"><use xlink:href="#icon-heart" href="#icon-heart"/></svg>
+      </div>
+    </div>
+    <p class="tap-note" id="seqNote">waiting for the first tap</p>
+  </div>
+
+  <div class="stage" id="stage-5">
+    <p class="step-label">step five of five</p>
+    <div class="progress-track">
+      <div class="progress-dot done" data-d="1"></div><div class="progress-dot done" data-d="2"></div>
+      <div class="progress-dot done" data-d="3"></div><div class="progress-dot done" data-d="4"></div>
+      <div class="progress-dot" data-d="5"></div>
+    </div>
+    <button class="seal-btn tap-pulse" id="holdSeal">
+      <div class="seal-fill" id="sealFill"></div>
+      <svg class="icon-svg icon-46"><use xlink:href="#icon-unlock" href="#icon-unlock"/></svg>
+    </button>
+    <h1 class="title" style="font-size:40px;">hold to unseal</h1>
+    <p class="subtitle">press and hold the circle until it opens on its own</p>
+  </div>
+
+  <div class="stage" id="envelope-stage">
+    <p class="step-label">the last one</p>
+    <div class="env-scene" id="envScene">
+      <div class="env-back"></div>
+      <div class="env-paper" id="envPaper">for you<i></i><i></i><i></i><i></i></div>
+      <svg class="env-front" viewBox="0 0 280 190" preserveAspectRatio="none">
+        <polygon points="0,0 140,100 0,190" fill="#f7dcea"/>
+        <polygon points="280,0 140,100 280,190" fill="#f3d0e3"/>
+        <polygon points="0,190 140,85 280,190" fill="#fbe6f1"/>
+      </svg>
+      <div class="env-flap" id="envFlap"></div>
+      <div class="env-seal tap-pulse" id="envSeal"><svg class="icon-svg icon-26 anim-heartbeat"><use xlink:href="#icon-heart" href="#icon-heart"/></svg></div>
+      <svg class="icon-svg icon-16 env-sparkle anim-twinkle" style="left:-26px; top:20px;"><use xlink:href="#icon-sparkle" href="#icon-sparkle"/></svg>
+      <svg class="icon-svg icon-19 env-sparkle anim-twinkle" style="right:-28px; top:60px; animation-delay:0.6s;"><use xlink:href="#icon-sparkle" href="#icon-sparkle"/></svg>
+      <svg class="icon-svg icon-16 env-sparkle anim-twinkle" style="left:30px; bottom:-26px; animation-delay:1.1s;"><use xlink:href="#icon-sparkle" href="#icon-sparkle"/></svg>
+      <svg class="icon-svg icon-18 env-sparkle anim-twinkle" style="right:20px; bottom:-30px; animation-delay:0.3s;"><use xlink:href="#icon-sparkle" href="#icon-sparkle"/></svg>
+    </div>
+    <p class="tap-note" id="envHint">tap the seal to open it</p>
+  </div>
+
+  <div class="stage" id="letter-stage">
+    <div class="letter-card">
+      <div class="letter-top">
+        <svg class="icon-svg icon-26 anim-sway"><use xlink:href="#icon-flower" href="#icon-flower"/></svg>
+        <span class="letter-date">a small note</span>
+      </div>
+      <h2 class="greeting">To you,</h2>
+
+      <p>This is not a confession. I want to be very clear about that from the start. It is just a note, written on a very ordinary day, about a very ordinary person who keeps ending up in my thoughts. Nothing more. Probably.</p>
+
+      <p>I only wrote it because I noticed a few things, and noticing things is apparently what I do now. Like how a room feels a little different when you laugh. Or how I check my phone a bit more often than I need to, and absolutely not because of anyone in particular.</p>
+
+      <p>I am not saying anything. I am only saying that if I were to say something, hypothetically, it would sound a lot like this letter, just with many more nervous pauses.</p>
+
+      <div class="ornament"><div class="line"></div><svg class="icon-svg icon-16"><use xlink:href="#icon-sparkle" href="#icon-sparkle"/></svg><div class="line"></div></div>
+
+      <p>So let us call it a secret that is not really a secret. A little sentence tucked between the lines, for you to find only if you are curious enough to look. If you find it, lovely. If you do not, then this was simply a kind note from someone who thinks you are easy to be around.</p>
+
+      <p>There is no pressure to decode anything. No answer needed. I would honestly rather keep things light, take it slowly, and see where one ordinary day leads to the next. I am not in a hurry, and I am very good at waiting.</p>
+
+      <p>But if you ever catch yourself smiling at this, even a little, and wondering what I might not be saying, maybe you have already figured out the part I left out. Maybe not. Either way, I will be around.</p>
+
+      <div class="ornament"><div class="line"></div><svg class="icon-svg icon-16"><use xlink:href="#icon-sparkle" href="#icon-sparkle"/></svg><div class="line"></div></div>
+
+      <p>Anyway. Drink some water, get some rest, and be a little kind to yourself today. You do a lot more right than you give yourself credit for. That part, at least, I am saying plainly.</p>
+
+      <p class="ps">P.S. Read it again. Slower this time.</p>
+
+      <div class="closing">
+        <svg class="icon-svg icon-18 anim-heartbeat"><use xlink:href="#icon-heart" href="#icon-heart"/></svg>
+        <span class="script">from someone who is definitely not confessing anything</span>
+      </div>
+    </div>
+    <div class="restart-wrap">
+      <button class="restart-btn" id="restartBtn">start over</button>
+    </div>
+  </div>
+
+<script>
+  const petalContainer = document.getElementById('petal-container');
+  const petalColors = ['#f3c6df', '#eab4d4', '#e6c9ea', '#f6d9ec', '#ddb8e8'];
+  function spawnBgPetal() {
+    const p = document.createElement('div');
+    p.className = 'petal';
+    const size = 8 + Math.random() * 10;
+    p.style.width = size + 'px';
+    p.style.height = size + 'px';
+    p.style.left = Math.random() * 100 + 'vw';
+    p.style.background = petalColors[Math.floor(Math.random() * petalColors.length)];
+    const duration = 8 + Math.random() * 8;
+    p.style.animationDuration = duration + 's';
+    petalContainer.appendChild(p);
+    setTimeout(() => p.remove(), duration * 1000 + 200);
+  }
+  setInterval(spawnBgPetal, 400);
+  for (let i = 0; i < 10; i++) setTimeout(spawnBgPetal, i * 250);
+
+  function goToStage(id) {
+    document.querySelectorAll('.stage').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  document.getElementById('startBtn').addEventListener('click', () => goToStage('stage-2'));
+  document.getElementById('frameBtn').addEventListener('click', () => goToStage('stage-2'));
+
+  const ribbonBtn = document.getElementById('ribbonBtn');
+  const ribbonV = document.getElementById('ribbonV');
+  const ribbonH = document.getElementById('ribbonH');
+  ribbonBtn.addEventListener('click', () => {
+    ribbonV.classList.add('untied');
+    ribbonH.classList.add('untied');
+    setTimeout(() => goToStage('stage-3'), 600);
+  });
+
+  let petalsCleared = 0;
+  const petalCounter = document.getElementById('petalCounter');
+  document.querySelectorAll('.cover-petal').forEach(petal => {
+    petal.addEventListener('click', () => {
+      if (petal.classList.contains('gone')) return;
+      petal.classList.add('gone');
+      petalsCleared++;
+      petalCounter.textContent = petalsCleared < 5 ? `${5 - petalsCleared} petal${5 - petalsCleared === 1 ? '' : 's'} left` : 'all clear';
+      if (petalsCleared === 5) {
+        setTimeout(() => goToStage('stage-4'), 500);
+      }
+    });
+  });
+
+  const seqOrder = ['flower', 'star', 'heart'];
+  let seqProgress = 0;
+  const seqNote = document.getElementById('seqNote');
+  const seqIcons = {
+    flower: document.getElementById('seqFlower'),
+    star: document.getElementById('seqStar'),
+    heart: document.getElementById('seqHeart')
+  };
+  Object.keys(seqIcons).forEach(key => {
+    seqIcons[key].addEventListener('click', () => {
+      if (seqOrder[seqProgress] === key) {
+        seqIcons[key].classList.add('lit');
+        seqIcons[key].classList.remove('tap-pulse');
+        seqProgress++;
+        if (seqProgress === seqOrder.length) {
+          seqNote.textContent = 'sequence complete';
+          setTimeout(() => goToStage('stage-5'), 500);
+        } else {
+          seqIcons[seqOrder[seqProgress]].classList.add('tap-pulse');
+          seqNote.textContent = `next: ${seqOrder[seqProgress]}`;
+        }
+      } else {
+        seqIcons[key].classList.add('wrong');
+        setTimeout(() => seqIcons[key].classList.remove('wrong'), 300);
+        seqProgress = 0;
+        Object.values(seqIcons).forEach(el => { el.classList.remove('lit'); el.classList.remove('tap-pulse'); });
+        seqIcons.flower.classList.add('tap-pulse');
+        seqNote.textContent = 'wrong order, try again from the flower';
+      }
+    });
+  });
+
+  const holdSeal = document.getElementById('holdSeal');
+  const sealFill = document.getElementById('sealFill');
+  let holdInterval = null;
+  let sealFillPct = 0;
+  function startHold() {
+    if (holdInterval) return;
+    holdInterval = setInterval(() => {
+      sealFillPct += 3;
+      sealFill.style.height = Math.min(sealFillPct, 100) + '%';
+      if (sealFillPct >= 100) {
+        clearInterval(holdInterval);
+        holdInterval = null;
+        goToStage('envelope-stage');
+      }
+    }, 40);
+  }
+  function stopHold() {
+    if (holdInterval) { clearInterval(holdInterval); holdInterval = null; }
+    sealFillPct = Math.max(0, sealFillPct - 15);
+    sealFill.style.height = sealFillPct + '%';
+  }
+  holdSeal.addEventListener('mousedown', startHold);
+  holdSeal.addEventListener('touchstart', (e) => { e.preventDefault(); startHold(); }, {passive:false});
+  ['mouseup','mouseleave'].forEach(ev => holdSeal.addEventListener(ev, stopHold));
+  holdSeal.addEventListener('touchend', stopHold);
+
+  const envScene = document.getElementById('envScene');
+  const envSeal = document.getElementById('envSeal');
+  const envFlap = document.getElementById('envFlap');
+  const envPaper = document.getElementById('envPaper');
+  const envHint = document.getElementById('envHint');
+  let envOpened = false;
+  envSeal.addEventListener('click', () => {
+    if (envOpened) return;
+    envOpened = true;
+    envHint.textContent = 'opening gently';
+    envSeal.classList.add('broken');
+    setTimeout(() => envFlap.classList.add('open'), 450);
+    setTimeout(() => { envFlap.style.zIndex = 1; }, 950);
+    setTimeout(() => envPaper.classList.add('rise'), 1500);
+    setTimeout(() => { envScene.classList.add('leave'); envHint.style.opacity = 0; }, 3200);
+    setTimeout(() => { goToStage('letter-stage'); setTimeout(setupReveal, 1300); }, 4100);
+  });
+
+  function setupReveal() {
+    const items = document.querySelectorAll('#letter-stage .letter-card p');
+    items.forEach((el, i) => {
+      setTimeout(() => el.classList.add('reveal'), i * 1000);
+    });
+  }
+
+  document.getElementById('restartBtn').addEventListener('click', () => {
+    ribbonV.classList.remove('untied');
+    envOpened = false;
+    envSeal.classList.remove('broken');
+    envFlap.classList.remove('open');
+    envFlap.style.zIndex = '';
+    envPaper.classList.remove('rise');
+    envScene.classList.remove('leave');
+    envHint.style.opacity = 1;
+    envHint.textContent = 'tap the seal to open it';
+    ribbonH.classList.remove('untied');
+    document.querySelectorAll('.cover-petal').forEach(p => p.classList.remove('gone'));
+    petalsCleared = 0;
+    petalCounter.textContent = 'tap all 5 petals scattered on the cover';
+    seqProgress = 0;
+    Object.values(seqIcons).forEach(el => { el.classList.remove('lit'); el.classList.remove('tap-pulse'); });
+    seqIcons.flower.classList.add('tap-pulse');
+    seqNote.textContent = 'waiting for the first tap';
+    sealFillPct = 0;
+    sealFill.style.height = '0%';
+    document.querySelectorAll('#letter-stage .letter-card p').forEach(el => el.classList.remove('reveal'));
+    goToStage('stage-1');
+  });
+</script>
+
+</body>
+</html>
